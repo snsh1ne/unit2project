@@ -1,7 +1,16 @@
 // Use the API_URL variable to make fetch requests to the API.
 // Replace the placeholder with your cohort name (ex: 2109-UNF-HY-WEB-PT)
-const cohortName = "YOUR COHORT NAME HERE";
-const API_URL = `https://fsa-puppy-bowl.herokuapp.com/api/${cohortName}`;
+const cohortName = "2501-FTB-ET-WEB-PT";
+const API_URL = `https://fsa-puppy-bowl.herokuapp.com/api/${cohortName}/players`;
+
+const state = {
+  allPuppies: [],
+  onePuppy: {},
+  favPuppy: {},
+};
+
+const fromID = document.querySelector("#new-player-form");
+const main = document.querySelector("#main");
 
 /**
  * Fetches all players from the API.
@@ -10,6 +19,11 @@ const API_URL = `https://fsa-puppy-bowl.herokuapp.com/api/${cohortName}`;
 const fetchAllPlayers = async () => {
   try {
     // TODO
+    const response = await fetch(`${API_URL}`);
+    console.log("Response", response);
+    const player_data = await response.json();
+    console.log("Data", player_data);
+    return player_data.data.players;
   } catch (err) {
     console.error("Uh oh, trouble fetching players!", err);
   }
@@ -22,7 +36,31 @@ const fetchAllPlayers = async () => {
  */
 const fetchSinglePlayer = async (playerId) => {
   try {
-    // TODO
+    //
+    const response = await fetch(`${API_URL}/${playerId}`);
+
+    console.log(response);
+    let puppy_data = await response.json();
+    puppy_data = puppy_data.data.player;
+    console.log(puppy_data);
+
+    state.onePuppy = document.createElement("div");
+    state.onePuppy.classList.add("card", "single");
+    state.onePuppy.innerHTML = `
+    <h1> Name: ${puppy_data.name}</h1>
+    <img src=${puppy_data.imageUrl} />
+    `;
+
+    go_back_button = document.createElement("button");
+    go_back_button.textContent = "Go Back";
+
+    go_back_button.addEventListener("click", () => {
+      renderAllPlayers(state.allPuppies);
+    });
+
+    state.onePuppy.appendChild(go_back_button);
+
+    renderSinglePlayer(state.onePuppy);
   } catch (err) {
     console.error(`Oh no, trouble fetching player #${playerId}!`, err);
   }
@@ -33,9 +71,21 @@ const fetchSinglePlayer = async (playerId) => {
  * @param {Object} playerObj the player to add
  * @returns {Object} the player returned by the API
  */
-const addNewPlayer = async (playerObj) => {
+const addNewPlayer = async (name, breed) => {
   try {
     // TODO
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name, breed }),
+    });
+
+    const result = await response.json();
+    console.log("Player added:", result);
+    return result;
   } catch (err) {
     console.error("Oops, something went wrong with adding that player!", err);
   }
@@ -48,6 +98,10 @@ const addNewPlayer = async (playerObj) => {
 const removePlayer = async (playerId) => {
   try {
     // TODO
+    await fetch(`${API_URL}/${playerId}`, {
+      method: "DELETE",
+    });
+    window.location.reload();
   } catch (err) {
     console.error(
       `Whoops, trouble removing player #${playerId} from the roster!`,
@@ -76,7 +130,20 @@ const removePlayer = async (playerId) => {
  * @param {Object[]} playerList - an array of player objects
  */
 const renderAllPlayers = (playerList) => {
-  // TODO
+  state.allPuppies = playerList.map((player) => {
+    const card = document.createElement("div");
+    card.classList.add("card");
+    card.innerHTML = `<h1>${player.name}</h1>
+    <button class="getDetails">Get Details</button>`;
+
+    const detailsBtn = card.querySelector(".getDetails");
+    detailsBtn.addEventListener("click", () => {
+      fetchSinglePlayer(player.id);
+    });
+    return card;
+  });
+
+  main.replaceChildren(...state.allPuppies);
 };
 
 /**
@@ -93,7 +160,7 @@ const renderAllPlayers = (playerList) => {
  * @param {Object} player an object representing a single player
  */
 const renderSinglePlayer = (player) => {
-  // TODO
+  main.replaceChildren(player);
 };
 
 /**
@@ -104,10 +171,50 @@ const renderSinglePlayer = (player) => {
 const renderNewPlayerForm = () => {
   try {
     // TODO
+    const nameInput = document.createElement("input");
+    nameInput.name = "name";
+    const breedInput = document.createElement("input");
+    breedInput.name = "breed";
+
+    const label = document.createElement("label");
+    label.textContent = "Please enter a name";
+    const submitButton = document.createElement("button");
+    submitButton.textContent = "submit";
+
+    const deleteButton = document.createElement("button");
+    deleteButton.textContent = "delete";
+
+    fromID.append(nameInput);
+    fromID.append(breedInput);
+    fromID.append(label);
+    fromID.append(submitButton);
+    fromID.append(deleteButton);
+
+    // appened to form
   } catch (err) {
     console.error("Uh oh, trouble rendering the new player form!", err);
   }
 };
+
+fromID.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const formData = new FormData(fromID);
+  let petName = formData.get("name");
+  let breedName = formData.get("breed");
+
+  addNewPlayer(petName, breedName);
+  //refreshes
+  window.location.reload();
+});
+
+fromID.addEventListener("delete", (event) => {
+  event.preventDefault();
+
+  removePlayer(playerID);
+  //refreshes
+  window.location.reload();
+});
 
 /**
  * Initializes the app by fetching all players and rendering them to the DOM.
